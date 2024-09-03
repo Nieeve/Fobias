@@ -4,28 +4,50 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+
+[System.Serializable]
+public class QuestionImageSet
+{
+    public Image[] images; // Array of images associated with a question
+}
+
 public class QuizManager : MonoBehaviour
 {
     public TextMeshProUGUI questionText; // The TextMeshPro component to display the question
     public Button[] answerButtons; // Array of buttons for the answers
-    public Button confirmButton; // Button to confirm the answer
+    public Button confirmButton; // Button to confirm the action (Show images or confirm answer)
+    public List<QuestionImageSet> questionImageSets; // List of QuestionImageSet to hold images for each question
+    public float imageDisplayDuration = 1f; // Duration to show each image
 
     private int currentQuestionIndex = 0;
     private int selectedAnswerIndex = -1;
+    private bool showingImages = false; // State to determine if we are showing images or waiting for an answer
 
     // Example questions and answers
-    private string[] questions = new string[]
+    private string[] initialQuestions = new string[]
     {
-        "¿Cual es la capital de Francia?",
-        "¿Que planeta es conocido como el planeta rojo?",
-        "Cual es el mamifero mas grande?"
+        "¿Qué te causan estas imágenes?",
+        "Si piensas en un barco a la deriva, perdido en el mar...",
+        "Te tienes que vacunar",
+        "Estás caminando en la oscuridad y de pronto miras abajo"
+
+    };
+
+    private string[] followUpQuestions = new string[]
+    {
+        "Documenta tu respuesta",
+        "¿Qué sensación te provoca?",
+        "¿Qué pasa por tu cabeza?",
+        "¿Qué sientes?"
+
     };
 
     private string[][] answers = new string[][]
     {
-        new string[] { "Paris", "London", "Berlin" },
-        new string[] { "Marte", "Tierra", "Jupiter" },
-        new string[] { "Elefante", "Ballena azul", "Jirafa" }
+        new string[] { "No puedo verlas", "No me importa", "No me molesta" },
+        new string[] { "No quiero pensar en eso", "No me importa", "No me molesta" },
+        new string[] { "No puedo hacerlo", "No me importa", "No me molesta" },
+        new string[] { "Me voy a caer", "No me importa", "No me molesta" }
     };
 
     private Color defaultColor = Color.white; // Default color for the buttons
@@ -33,7 +55,7 @@ public class QuizManager : MonoBehaviour
 
     void Start()
     {
-        DisplayQuestion();
+        DisplayInitialQuestion();
         confirmButton.onClick.AddListener(OnConfirmButtonClick);
 
         for (int i = 0; i < answerButtons.Length; i++)
@@ -43,20 +65,57 @@ public class QuizManager : MonoBehaviour
         }
     }
 
-    void DisplayQuestion()
+    void DisplayInitialQuestion()
     {
-        questionText.text = questions[currentQuestionIndex];
+        questionText.text = initialQuestions[currentQuestionIndex];
 
-        for (int i = 0; i < answerButtons.Length; i++)
+        // Hide all images initially
+        foreach (Image img in questionImageSets[currentQuestionIndex].images)
         {
-            answerButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = answers[currentQuestionIndex][i];
-            answerButtons[i].interactable = true; // Make sure buttons are clickable
-
-            // Reset button colors to default
-            SetButtonColor(answerButtons[i], defaultColor);
+            img.gameObject.SetActive(false);
         }
 
+        // Hide answer buttons until images are shown
+        foreach (Button btn in answerButtons)
+        {
+            btn.gameObject.SetActive(false);
+        }
+
+        questionText.gameObject.SetActive(true); // Show the initial question text
+
         selectedAnswerIndex = -1; // Reset selected answer index
+        showingImages = false; // Reset state to show images first
+    }
+
+    IEnumerator DisplayImagesSequence()
+    {
+        questionText.gameObject.SetActive(false); // Hide the question text before showing images
+
+        foreach (Image img in questionImageSets[currentQuestionIndex].images)
+        {
+            img.gameObject.SetActive(true);
+            yield return new WaitForSeconds(imageDisplayDuration);
+            img.gameObject.SetActive(false);
+        }
+
+        // Change to the follow-up question
+        questionText.text = followUpQuestions[currentQuestionIndex];
+        questionText.gameObject.SetActive(true); // Show the follow-up question
+
+        // After showing all images, enable the answer buttons and set their text
+        for (int i = 0; i < answerButtons.Length; i++)
+        {
+            answerButtons[i].gameObject.SetActive(true);
+            answerButtons[i].interactable = true; // Make sure buttons are clickable
+
+            // Assign the correct answer text to each button
+            TextMeshProUGUI answerText = answerButtons[i].GetComponentInChildren<TextMeshProUGUI>();
+            answerText.text = answers[currentQuestionIndex][i];
+
+            SetButtonColor(answerButtons[i], defaultColor); // Reset button colors to default
+        }
+
+        showingImages = false; // Ready for answer selection
     }
 
     void OnAnswerButtonClick(int index)
@@ -75,26 +134,38 @@ public class QuizManager : MonoBehaviour
 
     void OnConfirmButtonClick()
     {
-        if (selectedAnswerIndex != -1)
+        if (showingImages)
         {
-            // Handle answer validation or logic here
-            // For now, just proceed to the next question
+            return; // Prevent interaction during image display
+        }
 
+        if (selectedAnswerIndex == -1)
+        {
+            // Show images if no answer has been selected yet
+            if (!showingImages)
+            {
+                showingImages = true;
+                StartCoroutine(DisplayImagesSequence());
+            }
+            else
+            {
+                Debug.Log("Please select an answer!");
+            }
+        }
+        else
+        {
+            // Handle answer confirmation
             currentQuestionIndex++;
 
-            if (currentQuestionIndex < questions.Length)
+            if (currentQuestionIndex < initialQuestions.Length)
             {
-                DisplayQuestion();
+                DisplayInitialQuestion();
             }
             else
             {
                 // End of quiz logic
                 Debug.Log("Quiz Completed!");
             }
-        }
-        else
-        {
-            Debug.Log("Please select an answer!");
         }
     }
 
