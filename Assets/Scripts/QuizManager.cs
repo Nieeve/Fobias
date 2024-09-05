@@ -19,6 +19,9 @@ public class QuizManager : MonoBehaviour
     public List<QuestionImageSet> questionImageSets; // List of QuestionImageSet to hold images for each question
     public float imageDisplayDuration = 1f; // Duration to show each image
 
+    public Image mainBackground;  // Reference to the main background image
+    public Image secondaryBackground;
+
     private int currentQuestionIndex = 0;
     private int selectedAnswerIndex = -1;
     private bool showingImages = false; // State to determine if we are showing images or waiting for an answer
@@ -63,6 +66,8 @@ public class QuizManager : MonoBehaviour
             int index = i; // Capture the correct index in the loop
             answerButtons[i].onClick.AddListener(() => OnAnswerButtonClick(index));
         }
+        mainBackground.gameObject.SetActive(true);
+        secondaryBackground.gameObject.SetActive(false);
     }
 
     void DisplayInitialQuestion()
@@ -89,7 +94,16 @@ public class QuizManager : MonoBehaviour
 
     IEnumerator DisplayImagesSequence()
     {
+
         questionText.gameObject.SetActive(false); // Hide the question text before showing images
+
+        mainBackground.gameObject.SetActive(false);
+        secondaryBackground.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(0.3f);
+
+        secondaryBackground.gameObject.SetActive(false);
+        mainBackground.gameObject.SetActive(true);
 
         foreach (Image img in questionImageSets[currentQuestionIndex].images)
         {
@@ -159,7 +173,7 @@ public class QuizManager : MonoBehaviour
 
             if (currentQuestionIndex < initialQuestions.Length)
             {
-                DisplayInitialQuestion();
+                StartCoroutine(SwitchBackgroundAndDisplayQuestion());
             }
             else
             {
@@ -167,6 +181,22 @@ public class QuizManager : MonoBehaviour
                 Debug.Log("Quiz Completed!");
             }
         }
+    }
+    IEnumerator SwitchBackgroundAndDisplayQuestion()
+    {
+        // Hide the main background and show the secondary background
+        mainBackground.gameObject.SetActive(false);
+        secondaryBackground.gameObject.SetActive(true);
+
+        // Wait for 1 second
+        yield return new WaitForSeconds(0.3f);
+
+        // Switch back to the main background
+        secondaryBackground.gameObject.SetActive(false);
+        mainBackground.gameObject.SetActive(true);
+
+        // Display the next question
+        DisplayInitialQuestion();
     }
 
     void SetButtonColor(Button button, Color color)
